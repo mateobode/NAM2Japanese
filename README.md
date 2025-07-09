@@ -80,11 +80,12 @@ python src/train.py
 ```
 
 **Training Configuration:**
-- **Epochs**: 15
-- **Batch Size**: 8 (with gradient accumulation steps of 2)
-- **Learning Rate**: 1e-5 with cosine scheduler
-- **LoRA Config**: r=8, alpha=16, targeting q_proj, v_proj, k_proj, o_proj of WhisperAttention layers alongside fc1, fc2 Linear layers (Got better performance targeting all the layers)
-- **Checkpoints**: Saved every 500 steps in `output/checkpoint-{step}/`
+- **Epochs**: 20
+- **Batch Size**: 4 (with gradient accumulation steps of 4)
+- **Learning Rate**: 5e-5 with cosine scheduler
+- **LoRA Config**: r=64, alpha=128, targeting embeddings layers, q_proj, v_proj, k_proj, o_proj of WhisperAttention layers alongside fc1, fc2 Linear layers.
+- **EVA Config**: rho=0.6, num_singular_values=64, eva_gamma=0.8
+- **Checkpoints**: Saved every 300 steps in `output/checkpoint-{step}/`
 
 ### 2. Inference
 
@@ -129,9 +130,9 @@ Generates plots for:
 
 ### Model Architecture
 
-- **Base Model**: OpenAI Whisper Base (72M parameters)
-- **Fine-tuning Method**: LoRA adapters (295K trainable parameters, 0.4% of total)
-- **Target Modules**: All layers in attention mechanism and Linear layers
+- **Base Model**: OpenAI Whisper Small
+- **Fine-tuning Method**: LoRA adapters
+- **Target Modules**: All layers in attention mechanism, embeddings and Linear layers
 - **Language Configuration**: Japanese transcription task
 
 ### Training Process
@@ -148,19 +149,20 @@ Generates plots for:
 - **Sequence Length**: Maximum generation length of 128 tokens
 - **Mixed Precision**: FP16 training for memory efficiency
 - **Gradient Clipping**: Max gradient norm of 1.0
-- **Best Model Selection**: Based on lowest validation WER (Maybe for Japanese language would be better to track CER)
+- **Best Model Selection**: Based on lowest validation CER
 
 ## Expected Outcomes
 
 ### Training Results
 - **Training Loss**: Progressive decrease over 10 epochs
 - **Validation WER**: Improvement in word error rate on validation set
-- **Checkpoints**: Saved every 500 steps with best model selection
+- **CER**: Improvement in characterr error rate on validation set
+- **Checkpoints**: Saved every 300 steps with best model selection
 
 ### Inference Results
 - **Transcription Files**: Generated transcriptions saved in logs directory
 - **Performance Metrics**: WER and CER scores on test set
-- **Comparison**: Side-by-side comparison of predicted vs. ground truth transcriptions
+- **Comparison**: Side-by-side comparison of predicted vs. real transcriptions
 
 ### Visualization Outputs
 - **Loss Curves**: Training and validation loss over time
