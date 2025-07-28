@@ -33,63 +33,76 @@ class DataCollatorNAMSeq2SeqPadding:
 
         return batch
 
+def get_feature_extractor_and_tokenizer():
+    base_model_id = "openai/whisper-large-v3"
+    feature_extractor = WhisperFeatureExtractor.from_pretrained(base_model_id, language="ja", task="transcribe")
+    tokenizer = WhisperTokenizer.from_pretrained(base_model_id, language="ja", task="transcribe")
+    processor = WhisperProcessor.from_pretrained(base_model_id, language="ja", task="transcribe", return_attention_mask=True)
+    
+    return feature_extractor, tokenizer, processor
 
 def get_model_and_processor():
-    base_model_id = "openai/whisper-small"
+    base_model_id = "openai/whisper-large-v3"
     feature_extractor = WhisperFeatureExtractor.from_pretrained(base_model_id, language="ja", task="transcribe")
     tokenizer = WhisperTokenizer.from_pretrained(base_model_id, language="ja", task="transcribe")
     processor = WhisperProcessor.from_pretrained(base_model_id, language="ja", task="transcribe", return_attention_mask=True)
 
-    model = WhisperForConditionalGeneration.from_pretrained(base_model_id)
+    model = WhisperForConditionalGeneration.from_pretrained(
+        base_model_id,
+        use_safetensors=True,
+        torch_dtype=torch.float16,
+    )
     model.generation_config.language = "japanese"
     model.generation_config.task = "transcribe"
     model.generation_config.forced_decoder_ids = None
 
     # Freezing the base model layers to not update them during training
     model = prepare_model_for_kbit_training(model)
-    
+
     for param in model.get_encoder().conv1.parameters():
         param.requires_grad = True
     for param in model.get_encoder().conv2.parameters():
         param.requires_grad = True
 
-    #for param in model.get_encoder().embed_positions.parameters():
-    #    param.requires_grad = True
-
-    #def make_input_require_grad(module, input, output):
-    #    output.requires_grad_(True)
-    #
-    #model.get_encoder().conv1.register_forward_hook(make_input_require_grad)
-    #model.get_encoder().embed_positions.weight.requires_grad = True
-
     # Configuring LoRA for the model
     config = LoraConfig(
         r=64,
         lora_alpha=128,
-        target_modules=["q_proj", "v_proj", 'k_proj', "o_proj", "fc1", "fc2", "encoder.embed_positions"],
+        target_modules=[
+            "q_proj", "v_proj", "k_proj", "o_proj",
+            "fc1", "fc2",
+            "encoder.embed_positions"
+        ],
         lora_dropout=0.1,
         bias="none",
-        layers_to_transform=[0, 1, 2, 3, 4, 5],
+        layers_to_transform=[0,1,2,3,4,5,6,7],
         layers_pattern="encoder.layers",
         use_rslora= True,
         init_lora_weights="eva",
         eva_config={
-            "rho": 0.6,
+            "rho": 0.8,
             "num_singular_values": 64,
-            "eva_gamma": 0.8
-        }
+            "eva_gamma": 0.95,
+        },
     )
 
     model = get_peft_model(model, config)
+    model.print_trainable_parameters()
 
     return model, feature_extractor, tokenizer, processor
 
-
-def get_base_model_and_processor_for_inference():
+def get_base_model_and_processor_for_inference(device_map=None):
     """Load base model and processor for inference without training setup."""
-    base_model_id = "openai/whisper-small"
+    base_model_id = "openai/whisper-large-v3"
     processor = WhisperProcessor.from_pretrained(base_model_id, language="ja", task="transcribe", return_attention_mask=True)
-    model = WhisperForConditionalGeneration.from_pretrained(base_model_id, device_map="auto")
+    
+    if device_map is not None:
+        model = WhisperForConditionalGeneration.from_pretrained(
+            base_model_id, 
+            device_map={"": device_map}
+        )
+    else:
+        model = WhisperForConditionalGeneration.from_pretrained(base_model_id)
     
     # Set generation config for Japanese transcription
     model.generation_config.language = "japanese"
