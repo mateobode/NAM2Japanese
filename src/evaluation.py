@@ -4,12 +4,15 @@ import argparse
 import os
 from tqdm import tqdm
 from peft import PeftModel
-from data_preprocessing import get_dataset
+from prepare_dataset import get_dataset
 from model import get_base_model_and_processor_for_inference
 
 def main(args):
+    device = "cuda:3"
+    print(f"Using device: {device}")
+
     print("Loading base model and processor...")
-    model, processor = get_base_model_and_processor_for_inference()
+    model, processor = get_base_model_and_processor_for_inference(device_map=device)
     
     print(f"Loading fine-tuned model from checkpoint: {args.checkpoint_path}")
     model = PeftModel.from_pretrained(model, args.checkpoint_path)
@@ -95,7 +98,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint_path",
         type=str,
-        default="output/checkpoint-5000/adapter_model",
+        default="output/checkpoint-14500/adapter_model",
         help="Path to the fine-tuned adapter model checkpoint.",
     )
     parser.add_argument(
