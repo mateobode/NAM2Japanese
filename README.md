@@ -8,7 +8,7 @@ This project adapts the pre-trained Whisper base model for Japanese speech trans
 
 ## Key Features
 
-- **Efficient Fine-tuning**: Uses LoRA adapters (0.4% trainable parameters) instead of full model fine-tuning
+- **Efficient Fine-tuning**: Uses LoRA adapters instead of full model fine-tuning
 - **Japanese Language Support**: Configured specifically for Japanese transcription tasks
 - **Complete Pipeline**: Training, inference, evaluation, and visualization tools
 - **Robust Evaluation**: WER (Word Error Rate) and CER (Character Error Rate) metrics
@@ -44,7 +44,7 @@ NAM2Text/
 
 ```bash
 # Core dependencies
-pip install torch transformers datasets evaluate
+pip install torch transformers datasets gradio evaluate
 pip install peft accelerate tensorboard
 pip install librosa scipy matplotlib tqdm
 ```
@@ -80,25 +80,20 @@ python src/train.py
 ```
 
 **Training Configuration:**
-- **Epochs**: 20
+- **Epochs**: 30
 - **Batch Size**: 4 (with gradient accumulation steps of 4)
-- **Learning Rate**: 5e-5 with cosine scheduler
+- **Learning Rate**: 2e-4 with cosine scheduler
 - **LoRA Config**: r=64, alpha=128, targeting embeddings layers, q_proj, v_proj, k_proj, o_proj of WhisperAttention layers alongside fc1, fc2 Linear layers.
-- **EVA Config**: rho=0.6, num_singular_values=64, eva_gamma=0.8
-- **Checkpoints**: Saved every 300 steps in `output/checkpoint-{step}/`
+- **EVA Config**: rho=0.95, num_singular_values=64, eva_gamma=0.8
+- **Checkpoints**: Saved every 500 steps in `output/checkpoint-{step}/`
 
 ### 2. Inference
 
-Generate transcriptions for test data:
+Run inference using gradio for near real-time performance:
 
 ```bash
-python src/inference.py --checkpoint_path output/checkpoint-{step}/adapter_model --split test --log_dir logs
+python src/inference.py 
 ```
-
-**Parameters:**
-- `--checkpoint_path`: Path to the trained adapter model
-- `--split`: Dataset split to use (train/validation/test)
-- `--log_dir`: Directory to save inference results
 
 ### 3. Evaluation
 
@@ -130,7 +125,7 @@ Generates plots for:
 
 ### Model Architecture
 
-- **Base Model**: OpenAI Whisper Small
+- **Base Model**: OpenAI Whisper Large V3
 - **Fine-tuning Method**: LoRA adapters
 - **Target Modules**: All layers in attention mechanism, embeddings and Linear layers
 - **Language Configuration**: Japanese transcription task
@@ -148,7 +143,7 @@ Generates plots for:
 - **Audio Processing**: 16kHz sampling rate, log-mel spectrogram features
 - **Sequence Length**: Maximum generation length of 128 tokens
 - **Mixed Precision**: FP16 training for memory efficiency
-- **Gradient Clipping**: Max gradient norm of 1.0
+- **Gradient Clipping**: Max gradient norm of 0.5
 - **Best Model Selection**: Based on lowest validation CER
 
 ## Expected Outcomes
@@ -156,11 +151,11 @@ Generates plots for:
 ### Training Results
 - **Training Loss**: Progressive decrease over 10 epochs
 - **Validation WER**: Improvement in word error rate on validation set
-- **CER**: Improvement in characterr error rate on validation set
-- **Checkpoints**: Saved every 300 steps with best model selection
+- **Validation CER**: Improvement in characterr error rate on validation set
+- **Checkpoints**: Saved every 500 steps with best model selection
 
-### Inference Results
-- **Transcription Files**: Generated transcriptions saved in logs directory
+### Evaluation Results
+- **Evaluation Files**: Generated evaluations saved in logs directory
 - **Performance Metrics**: WER and CER scores on test set
 - **Comparison**: Side-by-side comparison of predicted vs. real transcriptions
 
@@ -188,4 +183,4 @@ With the LoRA fine-tuning approach:
 
 - **TensorBoard**: Logs saved to `output/runs/` for monitoring
 - **Console Output**: Progress bars and metrics printed during training
-- **CSV Files**: Training metrics saved to `train_data/` directory
+- **CSV Files**: Download from TensorBoard and save to `train_data/` directory
